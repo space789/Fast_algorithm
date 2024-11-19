@@ -1,0 +1,7 @@
+Target nodes: [12, 5]
+
+Edges to remove per target node:
+[
+  [(101, 74), (74, 75), (77, 67)],
+  [(101, 67), (32, 31), (101, 74)]
+]
