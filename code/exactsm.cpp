@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
     
     // Parameters
     int k = 10;  // Number of iterations or edges to remove
-    vector<int> T = selectRandomNodes(30, 10);  // Select 10 random target nodes
+    vector<int> T = selectRandomNodes(30, 1);  // Select 10 random target nodes
     vector<pair<int, vector<Edge>>> all_P;
     // Algorithm running time
     auto start = high_resolution_clock::now();

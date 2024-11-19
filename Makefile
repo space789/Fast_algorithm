@@ -1,8 +1,8 @@
 CXX = g++
 DEPEND = -I	./include/eigen/ -I	.
-CXXFLAGS_11 = -std=c++11 -O3 -pthread
-CXXFLAGS_14 = -std=c++14 -O3 -pthread
-CXXFLAGS_17 = -std=c++17 -O3 -pthread
+CXXFLAGS_11 = -std=c++11 -O3
+CXXFLAGS_14 = -std=c++14 -O3
+CXXFLAGS_17 = -std=c++17 -O3
 
 all:	main	optimum	exactsm	approxisc	random_walk	approxisc
 

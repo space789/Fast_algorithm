@@ -17,26 +17,35 @@ using namespace Eigen;
 
 class Graph {
 public:
-    std::unordered_map<int, std::unordered_set<int>> adjList;
-    void addEdge(int node1, int node2) {
-        adjList[node1].insert(node2);
-        adjList[node2].insert(node1);
+    std::unordered_map<int, std::vector<int>> adjList;
+    void addEdge(int u, int v) {
+        adjList[u].push_back(v);
+        adjList[v].push_back(u);
     }
 
     void removeEdge(int node1, int node2) {
+    // Remove node2 from node1's adjacency list
         if (adjList.find(node1) != adjList.end()) {
-            adjList[node1].erase(node2);
+            auto& neighbors = adjList[node1];
+            neighbors.erase(std::remove(neighbors.begin(), neighbors.end(), node2), neighbors.end());
         }
+
+        // Remove node1 from node2's adjacency list
         if (adjList.find(node2) != adjList.end()) {
-            adjList[node2].erase(node1);
+            auto& neighbors = adjList[node2];
+            neighbors.erase(std::remove(neighbors.begin(), neighbors.end(), node1), neighbors.end());
         }
     }
 
     void removeNode(int node) {
+        // First, remove the node from all its neighbors
         if (adjList.find(node) != adjList.end()) {
             for (int neighbor : adjList[node]) {
-                adjList[neighbor].erase(node);
+                // Remove the node from each neighbor's vector of neighbors
+                auto& neighborList = adjList[neighbor];
+                neighborList.erase(std::remove(neighborList.begin(), neighborList.end(), node), neighborList.end());
             }
+            // Now remove the node itself from the adjacency list
             adjList.erase(node);
         }
     }
@@ -54,11 +63,11 @@ public:
     }
 
     std::unordered_set<int> getNeighbors(int node) const {
-        auto it = adjList.find(node);
-        if (it != adjList.end()) {
-            return it->second;
+    auto it = adjList.find(node);
+    if (it != adjList.end()) {
+        return std::unordered_set<int>(it->second.begin(), it->second.end());  // Convert vector to set
         }
-        return {};
+        return {};  // Empty set if node has no neighbors
     }
 
     bool dfs(int node, std::unordered_set<int>& visited) const {
@@ -118,51 +127,45 @@ public:
             }
         }
     }
-
-    std::pair<std::vector<std::pair<int, int>>, int> randomEdgeWalk(int startNode, int targetNode, int maxLength) {
-        std::vector<std::pair<int, int>> pathEdges;
-        int walkLength = 0;
-        std::vector<bool> visited(adjList.size(), false);  // Using vector for faster access
-        visited[startNode] = true;
-
-        std::default_random_engine rng(std::rand());  // Random number generator
-
-        int currentNode = startNode;
-
-        while (walkLength < maxLength) {
-            auto& neighbors = adjList[currentNode];
-            
-            // If no unvisited neighbors, stop the walk
-            if (neighbors.empty()) {
-                break;
-            }
-
-            std::vector<int> unvisitedNeighbors;
-
-            // Collect unvisited neighbors
-            for (int neighbor : neighbors) {
-                if (!visited[neighbor]) {
-                    unvisitedNeighbors.push_back(neighbor);
-                }
-            }
-
-            // If no unvisited neighbors, terminate
-            if (unvisitedNeighbors.empty()) {
-                break;
-            }
-
-            // Randomly select the next unvisited neighbor
-            std::uniform_int_distribution<int> dist(0, unvisitedNeighbors.size() - 1);
-            int nextNode = unvisitedNeighbors[dist(rng)];
-
-            // Record the edge and move to the next node
-            pathEdges.emplace_back(currentNode, nextNode);
-            visited[nextNode] = true;
-            currentNode = nextNode;  // Move to the next node
-            ++walkLength;  // Increment walk length
+    std::vector<std::pair<int, int>> getPathEdges(const std::vector<int>& path) {
+        std::vector<std::pair<int, int>> edges;
+        if (path.size() < 2) {
+            return edges; // A single node or empty path has no edges
         }
 
-        return {pathEdges, walkLength};
+        for (size_t i = 0; i < path.size() - 1; ++i) {
+            edges.emplace_back(path[i], path[i + 1]);
+        }
+
+        return edges;
+    }
+    std::pair<std::vector<std::pair<int, int>>, int> randomEdgeWalk(int startNode, int targetNode, int maxLength) {
+        std::vector<std::pair<int, int>> pathEdges;  // To store edges of the path
+        std::vector<int> path;
+        std::unordered_map<int, bool> visited;  // To track visited nodes
+        int walkLength = 0;
+        visited[startNode] = true;  // Mark start node as visited
+
+        // Use a random engine for shuffling the neighbors
+        std::srand(std::time(nullptr));  
+        std::default_random_engine rng(std::rand()); 
+        int currentNode = startNode;
+        for (int step = 0; step < maxLength; ++step) {
+            if (currentNode == targetNode) {
+                break;
+            }
+            if (adjList[currentNode].empty()) {
+                break;
+            }
+
+            std::uniform_int_distribution<int> dist(0, adjList[currentNode].size() - 1);
+            currentNode = adjList[currentNode][dist(rng)];
+            path.push_back(currentNode);
+            walkLength++;
+        }
+
+        pathEdges = getPathEdges(path);
+        return {pathEdges, walkLength};  // Return the path (edges) and total length of the walk
     }
 
     std::pair<std::vector<std::pair<int, int>>, std::vector<int>> collectAllPaths(int targetNode, int maxLength, int epsilon) {
@@ -180,8 +183,8 @@ public:
                     int node1 = pair.first;
                     for (int node2 : pair.second) {
                         if (node1 < node2) {
-                            auto path1 = randomEdgeWalk(node1, targetNode, maxLength);
-                            auto path2 = randomEdgeWalk(node2, targetNode, maxLength);
+                            auto path1 = randomEdgeWalk(node1, targetNode, 0.5 * maxLength);
+                            auto path2 = randomEdgeWalk(node2, targetNode, 0.5 * maxLength);
 
                             if (!path1.first.empty()) {
                                 localPathEdges.insert(localPathEdges.end(), path1.first.begin(), path1.first.end());
@@ -229,23 +232,17 @@ public:
             g.removeEdge(node1, node2);
 
             // Ensure the graph is still connected (excluding paths involving the target node)
-            if (g.isConnected() && (node1 != targetNode && node2 != targetNode)) {
+            if (g.isConnected() && node1 != targetNode && node2 != targetNode) {
                 // Calculate the resistance sum for the path lengths
                 for (size_t i = 0; i < pathLengthAll.size(); ++i) {
                     if (i >= pathEdgesAll.size()) {
                         break;  // Prevent out-of-bounds access
                     }
-
                     int pathLength = pathLengthAll[i];
                     for (int j = 0; j < pathLength; ++j) {
-                        if (j >= pathEdgesAll.size()) {
-                            break;  // Prevent out-of-bounds access
-                        }
                         const auto& edge = pathEdgesAll[j];
                         // Calculate weights here
                         if (edge.first == node1 || edge.second == node2) {
-                            // std::cout << "Processing edge (" << node1 << ", " << node2 << ") with path length " << pathLength << std::endl;
-                            weights += 1.0 / (pathLength);  // Adjust this formula as needed
                             weights += 1.0 / (pathLength);  // Adjust this formula as needed
                         }
                     }
@@ -583,7 +580,7 @@ int max_random_walk_length(string filename, int target, double gamma) {
 EdgeList APPROXISC(string filename, int numberOfEdge, int targetNode, int maxLength, double epsilon) {
     Graph g;
     g.readFromFile(filename);
-    int rho = static_cast<int>(log(g.getNumNodes()) / pow(epsilon, 2));
+    int rho = static_cast<int>(log(g.getNumNodes()) / pow(epsilon, 2) / 10000);
 
     std::vector<std::pair<int, int>> P;
     for (int i = 0; i < numberOfEdge; ++i) {
@@ -635,8 +632,8 @@ EdgeList FASTICM(std::string filename, int numberOfEdge, int targetNode,
     double beta = alpha / 2;
     double epsilon = (alpha / 2) / phi;
     int n = g.getNumNodes();
-    int rho = static_cast<int>(0.01 * log(n) / pow(epsilon, 2));
-    int t = static_cast<int>(0.95 * phi * sqrt(n * log(n)) / beta);
+    int rho = static_cast<int>(log(n) / pow(epsilon, 2) / 10000);
+    int t = static_cast<int>(0.5 * phi * sqrt(n * log(n)) / beta);
     t = (t > n) ? 0 : n - t;
 
     std::unordered_set<int> excludedNodes;

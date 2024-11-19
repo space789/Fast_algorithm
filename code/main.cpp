@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
 
     //FASTMICM//
     if (runFASTMICM) {
-        cout << "FASTMICM" << endl;
+        cout << "FASTICM" << endl;
         double gamma = 0.95;
         double alpha = 0.05;
         int phi = diameter;

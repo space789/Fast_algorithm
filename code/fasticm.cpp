@@ -18,22 +18,26 @@
 class Graph {
 public:
     // Adjacency list using unordered_map (key: node, value: set of neighbors)
-    std::unordered_map<int, std::unordered_set<int>> adjList;
+    std::unordered_map<int, std::vector<int>> adjList;
 
     // Function to add an edge
-    void addEdge(int node1, int node2) {
-        adjList[node1].insert(node2);
-        adjList[node2].insert(node1); // Assuming undirected graph
+    void addEdge(int u, int v) {
+        adjList[u].push_back(v);
+        adjList[v].push_back(u);
     }
 
     // Function to remove an edge
     void removeEdge(int node1, int node2) {
-        // Remove edge from node1's neighbors and node2's neighbors
+    // Remove node2 from node1's adjacency list
         if (adjList.find(node1) != adjList.end()) {
-            adjList[node1].erase(node2);
+            auto& neighbors = adjList[node1];
+            neighbors.erase(std::remove(neighbors.begin(), neighbors.end(), node2), neighbors.end());
         }
+
+        // Remove node1 from node2's adjacency list
         if (adjList.find(node2) != adjList.end()) {
-            adjList[node2].erase(node1);
+            auto& neighbors = adjList[node2];
+            neighbors.erase(std::remove(neighbors.begin(), neighbors.end(), node1), neighbors.end());
         }
     }
 
@@ -42,7 +46,9 @@ public:
         // First, remove the node from all its neighbors
         if (adjList.find(node) != adjList.end()) {
             for (int neighbor : adjList[node]) {
-                adjList[neighbor].erase(node); // Remove the node from each neighbor's set
+                // Remove the node from each neighbor's vector of neighbors
+                auto& neighborList = adjList[neighbor];
+                neighborList.erase(std::remove(neighborList.begin(), neighborList.end(), node), neighborList.end());
             }
             // Now remove the node itself from the adjacency list
             adjList.erase(node);
@@ -66,11 +72,11 @@ public:
 
     // Get neighbors of a node
     std::unordered_set<int> getNeighbors(int node) const {
-        auto it = adjList.find(node);
-        if (it != adjList.end()) {
-            return it->second;
+    auto it = adjList.find(node);
+    if (it != adjList.end()) {
+        return std::unordered_set<int>(it->second.begin(), it->second.end());  // Convert vector to set
         }
-        return {}; // Return empty set if node has no neighbors
+        return {};  // Empty set if node has no neighbors
     }
 
     // Perform DFS to check connectivity
@@ -115,86 +121,67 @@ public:
         }
     }
 
-    // Perform BFS from start node to target node and return the path
-    // Generate a random spanning tree from startNode
+    std::vector<std::pair<int, int>> getPathEdges(const std::vector<int>& path) {
+        std::vector<std::pair<int, int>> edges;
+        if (path.size() < 2) {
+            return edges; // A single node or empty path has no edges
+        }
+
+        for (size_t i = 0; i < path.size() - 1; ++i) {
+            edges.emplace_back(path[i], path[i + 1]);
+        }
+
+        return edges;
+    }
+
     std::pair<std::vector<std::pair<int, int>>, int> randomEdgeWalk(int startNode, int targetNode, int maxLength) {
         std::vector<std::pair<int, int>> pathEdges;  // To store edges of the path
-        int walkLength = 0;
+        std::vector<int> path;
         std::unordered_map<int, bool> visited;  // To track visited nodes
+        int walkLength = 0;
         visited[startNode] = true;  // Mark start node as visited
-
         // Use a random engine for shuffling the neighbors
         std::srand(std::time(nullptr));  
         std::default_random_engine rng(std::rand()); 
-
         int currentNode = startNode;
-
-        // Start random walk until we reach the target or exceed the maximum length
-        while (walkLength < maxLength) {
-            // If we've reached the target node, stop the walk
+        for (int step = 0; step < maxLength; ++step) {
             if (currentNode == targetNode) {
                 break;
             }
-
-            auto neighbors = adjList[currentNode];
-            if (neighbors.empty()) {
-                break;  // Exit the walk if no neighbors are found
-            }
-
-            std::vector<int> shuffledNeighbors(neighbors.begin(), neighbors.end());
-            std::shuffle(shuffledNeighbors.begin(), shuffledNeighbors.end(), rng);  // Shuffle neighbors
-
-            bool foundNextNode = false;
-
-            // Try get neighbor randomly
-            for (int neighbor : shuffledNeighbors) {
-                if (!visited[neighbor]) {  // Not visited yet
-                    // Record the edge and move to the next node
-                    pathEdges.emplace_back(currentNode, neighbor);
-                    visited[neighbor] = true;
-                    currentNode = neighbor;  // Move to the next node
-                    ++walkLength;  // Increment walk length
-                    foundNextNode = true;
-                    break;  // Move to next iteration of the walk
-                }
-            }
-
-            // If no unvisited neighbor was found, we break the loop (dead end reached)
-            if (!foundNextNode) {
+            if (adjList[currentNode].empty()) {
                 break;
             }
+
+            std::uniform_int_distribution<int> dist(0, adjList[currentNode].size() - 1);
+            currentNode = adjList[currentNode][dist(rng)];
+            path.push_back(currentNode);
+            walkLength++;
         }
 
+        pathEdges = getPathEdges(path);
         return {pathEdges, walkLength};  // Return the path (edges) and total length of the walk
     }
 
     std::pair<std::vector<std::pair<int, int>>, std::vector<int>> collectAllPaths(int targetNode, int maxLength, int epsilon) {
         std::vector<std::pair<int, int>> pathEdgesAll; // To store all paths' edges
         std::vector<int> pathLengthAll; // To store the total path length
-        
         for (int i=1; i<epsilon; ++i){
             for (const auto& pair : adjList) {
             int node1 = pair.first;
             for (int node2 : pair.second) {
-                if (node1 < node2) {  // Avoid duplicate edges (node1, node2) and (node2, node1)
-                    auto path1 = randomEdgeWalk(node1, targetNode, maxLength);
-                    auto path2 = randomEdgeWalk(node2, targetNode, maxLength);
-
-                    if (!path1.first.empty()) {
-                        pathEdgesAll.insert(pathEdgesAll.end(), path1.first.begin(), path1.first.end());
-                        pathLengthAll.push_back(path1.second);
-                    }
-
-                    if (!path2.first.empty()) {
-                        pathEdgesAll.insert(pathEdgesAll.end(), path2.first.begin(), path2.first.end());
-                        pathLengthAll.push_back(path2.second);
-                    }
+                auto path1 = randomEdgeWalk(node1, targetNode, maxLength);
+                auto path2 = randomEdgeWalk(node2, targetNode, maxLength);
+                if (!path1.first.empty()) {
+                    pathEdgesAll.insert(pathEdgesAll.end(), path1.first.begin(), path1.first.end());
+                    pathLengthAll.push_back(path1.second);
+                }
+                if (!path2.first.empty()) {
+                    pathEdgesAll.insert(pathEdgesAll.end(), path2.first.begin(), path2.first.end());
+                    pathLengthAll.push_back(path2.second);
                 }
             }
         }
-        }
-        
-
+    }
         return {pathEdgesAll, pathLengthAll};
     }
 
@@ -202,26 +189,21 @@ public:
     std::pair<std::vector<std::pair<int, int>>, std::vector<double>> removeEdgeResistanceSum(Graph& g, int targetNode, const std::vector<std::pair<int, int>>& pathEdgesAll, const std::vector<int>& pathLengthAll) {
         std::vector<std::pair<int, int>> removeEdge;
         std::vector<double> removeEdgeResistance;
-
         // Store edges to remove separately before processing
         std::vector<std::pair<int, int>> edgesToRemove;
-
         for (const auto& pair : g.adjList) {
             int node1 = pair.first;
             for (int node2 : pair.second) {
                 edgesToRemove.push_back({node1, node2});
             }
         }
-
         // Process edges separately after iterating over the adjacency list
         for (const auto& edge : edgesToRemove) {
             int node1 = edge.first;
             int node2 = edge.second;
             double weights = 0;
-
             // Remove the edge temporarily
             g.removeEdge(node1, node2);
-
             // Ensure the graph is still connected (excluding paths involving the target node)
             if (g.isConnected() && (node1 != targetNode && node2 != targetNode)) {
                 // Calculate the resistance sum for the path lengths
@@ -352,37 +334,23 @@ std::vector<std::pair<int, int>> FASTICM(Graph& g, int numberOfEdge, int targetN
     }
     
     auto start_read = std::chrono::high_resolution_clock::now();
-    // Remove some vertex
-    // Random number generator setup
+    // Randomly remove some vertices except for the target node
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, n - 1);
-
-    // Ensure targetNode is included in the selection
-    std::unordered_set<int> selectedNodes;
-
+    std::unordered_set<int> selectedNodes = {targetNode};
     // Randomly select t-1 other nodes
     while (selectedNodes.size() < t) {
-        int randomNode = dis(gen);
-        selectedNodes.insert(randomNode);
+        selectedNodes.insert(dis(gen));
     }
-    // Remove nodes
+    // Remove selected nodes and their edges
     for (int node : selectedNodes) {
-        if (node != targetNode) {
-            g.removeNode(node);
+        if (node == targetNode) continue;
+        for (int neighbor : g.getNeighbors(node)) {
+            g.removeEdge(node, neighbor); // Remove edges
         }
+        g.removeNode(node); // Remove node
     }
-
-    // Remove edges involving selected nodes
-    for (int node : selectedNodes) {
-        if (node != targetNode) {
-            auto neighbors = g.getNeighbors(node);
-            for (int neighbor : neighbors) {
-                g.removeEdge(node, neighbor);  // Remove the edge between `node` and `neighbor`
-            }
-        }
-    }
-
     // Initialization Need to place here
     auto allPaths = g.collectAllPaths(targetNode, maxLength, rho);
     const auto& pathEdgesAll = allPaths.first;
@@ -392,8 +360,9 @@ std::vector<std::pair<int, int>> FASTICM(Graph& g, int numberOfEdge, int targetN
     auto duration_read = std::chrono::duration_cast<std::chrono::milliseconds>(stop_read - start_read);
 
     std::cout << "Reading running time: " << duration_read.count() / 1000.0 << " seconds" << std::endl;
+
     std::vector<std::pair<int, int>> P;
-    for (int i = 1; i < numberOfEdge; ++i) {
+    for (int i = 0; i < numberOfEdge; ++i) {
         // Delete edge
         auto allResistance = g.removeEdgeResistanceSum(g, targetNode, pathEdgesAll, pathLengthAll);
         const auto& pathEdges = allResistance.first;
@@ -420,29 +389,22 @@ std::vector<std::pair<int, int>> FASTICM(Graph& g, int numberOfEdge, int targetN
 int main(int argc, char* argv[]) {
 
     double gamma = 0.95;
-    double alpha = 0.05;
-    int phi = 1; //deminaion
-    int numberOfEdges = 10;
+    double alpha = 0.005;
+    int phi = 1; //dimensions
+    int numberOfEdges = 1;
 
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <filename> <target_node>" << std::endl;
         return 1; // Exit with error code if no filename or target node is provided
     }
-
     // Get the filename and target node from the command line argument
     std::string filename = argv[1];
     int targetNode = std::stoi(argv[2]);
-
     // Seed the random number generator
     std::srand(std::time(nullptr));
-    
     // Read the graph from the file
     Graph g;
     g.readFromFile(filename);
-
-    
-
-
     int max_length = max_random_walk_length(g, targetNode, gamma);
     // Output the graph details
     std::vector<std::pair<int, int>> result = FASTICM(g, numberOfEdges, targetNode, max_length, alpha, phi);
