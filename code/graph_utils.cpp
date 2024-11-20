@@ -180,14 +180,14 @@ public:
                 double weights_xy = 0;
                 for (size_t i = 0; i < pathEdgesAll.size(); i+=2) {
                     for (const auto& pair : pathEdgesAll[i]){
-                        if ((pair.first == node1 && pair.second == node2) || (pair.first == node2 && pair.second == node1)) {
-                            weights_u += 1.0 / (pathLengthAll[i]) * rho + 1.0 / (pathLengthAll[i+1]) * rho;
+                        if ((pair.first == node1 || pair.first == node2 || pair.second == node1 || pair.second == node2)) {
+                            weights_u += 1.0 / (abs(pathLengthAll[i] + (pathLengthAll[i+1])));
                             weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
                         }
                     }
                 }
                 removeEdge.emplace_back(node1, node2);
-                if (weights_xy == 1.05) {
+                if (weights_xy == 0) {
                     removeEdgeResistance.push_back(0);
                 } else {
                     removeEdgeResistance.push_back(weights_u);
@@ -485,7 +485,7 @@ int max_random_walk_length(string filename, int target, double gamma) {
         std::cerr << "Error: Spectral radius is less than or equal to 1, invalid for max_length calculation!" << std::endl;
         return -1;
     }
-    int max_length = static_cast<int>((std::log(m * gamma / std::sqrt(n - 1)) * d_norm) / std::log(spectral_radius));
+    int max_length = static_cast<int>(0.1 * (std::log(m * gamma / std::sqrt(n - 1)) * d_norm) / std::log(spectral_radius));
     return max_length;
 }
 
