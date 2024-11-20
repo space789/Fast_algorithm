@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
     bool runOPTIMUM = true;
     bool runEXACTSM = true;
     bool runAPPROXISC = true;
-    bool runFASTMICM = true;
+    bool runFASTICM = true;
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "-t") == 0 || std::strcmp(argv[i], "--targetnodes") == 0) {
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
         } else if (std::strcmp(argv[i], "--disable-approxisc") == 0) {
             runAPPROXISC = false;
         } else if (std::strcmp(argv[i], "--disable-fasticm") == 0) {
-            runFASTMICM = false;
+            runFASTICM = false;
         } else {
             filename = argv[i];
         }
@@ -180,8 +180,8 @@ int main(int argc, char* argv[]) {
         all_P.clear();
     }
 
-    //FASTMICM//
-    if (runFASTMICM) {
+    //FASTICM//
+    if (runFASTICM) {
         cout << "FASTICM" << endl;
         double gamma = 0.95;
         double alpha = 0.05;
@@ -194,8 +194,8 @@ int main(int argc, char* argv[]) {
         }
         auto stop_fasticm = high_resolution_clock::now();
         auto duration_fasticm = duration_cast<milliseconds>(stop_fasticm - start_fasticm);
-        cout << "FASMICM running time: " << duration_fasticm.count() / 1000.0 << " seconds" << endl;
-        printTargetNodesAndEdges(filename, "FASMICM", targetnodes, all_P);
+        cout << "FASTICM running time: " << duration_fasticm.count() / 1000.0 << " seconds" << endl;
+        printTargetNodesAndEdges(filename, "FASTICM", targetnodes, all_P);
         all_P.clear();
     }
 
