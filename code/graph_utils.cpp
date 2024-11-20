@@ -177,8 +177,8 @@ public:
                 double weights_u = 0;
                 double weights_xy = 0;
                 for (size_t i = 0; i < pathEdgesAll.size(); ++i) {
-                    weights_u += (pathLengthAll[i] * rho) + (pathLengthAll[i+1] * rho);
-                    weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]) * rho);
+                    weights_u += 1 / (pathLengthAll[i]) + 1 / (pathLengthAll[i+1]);
+                    weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
                 }
                 removeEdge.emplace_back(node1, node2);
                 if (weights_xy >= 0.95 && weights_xy <= 1.05) {
@@ -499,7 +499,7 @@ EdgeList APPROXISC(string filename, int numberOfEdge, int targetNode, int maxLen
         std::pair<int, int> getMaxEdge;
         for (size_t i = 0; i < pathEdges.size(); ++i) {
             const auto& edge = pathEdges[i];
-            double resistance = pathEdgesResistance[i];
+            double resistance = pathEdgesResistance[i] ;
             if (resistance > maxResistance) {
                 maxResistance = resistance;
                 getMaxEdge = edge;

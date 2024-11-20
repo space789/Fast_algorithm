@@ -20,7 +20,9 @@ This program calculates the effective resistance between pairs of nodes in a gra
 ### Step 1: Install Eigen
 1. Clone the Eigen library repository:
    ```bash
+   cd include
    git clone https://gitlab.com/libeigen/eigen.git
+   cd ..
    ```
 2. Include the Eigen directory (e.g., `include/eigen/`) in your project or specify it during compilation.
 
