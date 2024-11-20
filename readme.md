@@ -9,7 +9,7 @@ This program calculates the effective resistance between pairs of nodes in a gra
 
 ## Prerequisites
 
-- **Python**: Used for additional analysis and visualization.
+- **Python(3.9.20)**: Used for additional analysis and visualization.
 - **C++ compiler**: (e.g., `g++`) for compiling the C++ code.
 - **Eigen library**: A C++ template library for linear algebra.
 

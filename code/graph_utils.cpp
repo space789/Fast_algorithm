@@ -180,14 +180,14 @@ public:
                 double weights_xy = 0;
                 for (size_t i = 0; i < pathEdgesAll.size(); i+=2) {
                     for (const auto& pair : pathEdgesAll[i]){
-                        if (pair.first == targetNode || pair.second == targetNode) {
+                        if ((pair.first == node1 && pair.second == node2) || (pair.first == node2 && pair.second == node1)) {
                             weights_u += 1.0 / (pathLengthAll[i]) * rho + 1.0 / (pathLengthAll[i+1]) * rho;
                             weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
                         }
                     }
                 }
                 removeEdge.emplace_back(node1, node2);
-                if (weights_xy >= 0.95 && weights_xy <= 1.05) {
+                if (weights_xy == 1.05) {
                     removeEdgeResistance.push_back(0);
                 } else {
                     removeEdgeResistance.push_back(weights_u);
