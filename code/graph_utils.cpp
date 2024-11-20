@@ -149,13 +149,15 @@ public:
             for (const auto& pair : adjList) {
                 int node1 = pair.first;
                 for (int node2 : pair.second) {
-                    if (node1 < node2) {
+                    if (node1 < node2 && (node1 != targetNode || node2 != targetNode)) {
                         std::pair<std::vector<std::pair<int, int>>, int> path1 = randomEdgeWalk(node1, targetNode, 0.5 * maxLength);
                         std::pair<std::vector<std::pair<int, int>>, int> path2 = randomEdgeWalk(node2, targetNode, 0.5 * maxLength);
-                        localPathEdges.push_back(path1.first);
-                        localPathLengths.push_back(path1.second);
-                        localPathEdges.push_back(path2.first);
-                        localPathLengths.push_back(path2.second);
+                        if (path1.second & path2.second) {
+                            localPathEdges.push_back(path1.first);
+                            localPathLengths.push_back(path1.second);
+                            localPathEdges.push_back(path2.first);
+                            localPathLengths.push_back(path2.second);
+                        }
                     }
                 }
             }
@@ -176,8 +178,11 @@ public:
             for (int node2: pair.second) {
                 double weights_u = 0;
                 double weights_xy = 0;
-                for (size_t i = 0; i < pathEdgesAll.size(); ++i) {
-                    weights_u += 1 / (pathLengthAll[i]) + 1 / (pathLengthAll[i+1]);
+                for (size_t i = 0; i < pathEdgesAll.size(); i+=2) {
+                    weights_u += (std::any_of(pathEdgesAll[i].begin(), pathEdgesAll[i].end(), 
+                                    [&](const std::pair<int, int>& edge) { 
+                                        return edge.first == targetNode || edge.second == targetNode; 
+                                    })) ? (1 / pathLengthAll[i]) * rho : 0;
                     weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
                 }
                 removeEdge.emplace_back(node1, node2);
