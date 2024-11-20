@@ -179,11 +179,12 @@ public:
                 double weights_u = 0;
                 double weights_xy = 0;
                 for (size_t i = 0; i < pathEdgesAll.size(); i+=2) {
-                    weights_u += (std::any_of(pathEdgesAll[i].begin(), pathEdgesAll[i].end(), 
-                                    [&](const std::pair<int, int>& edge) { 
-                                        return edge.first == targetNode || edge.second == targetNode; 
-                                    })) ? (1 / pathLengthAll[i]) * rho : 0;
-                    weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
+                    for (const auto& pair : pathEdgesAll[i]){
+                        if (pair.first == targetNode || pair.second == targetNode) {
+                            weights_u += 1.0 / (pathLengthAll[i]) * rho + 1.0 / (pathLengthAll[i+1]) * rho;
+                            weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
+                        }
+                    }
                 }
                 removeEdge.emplace_back(node1, node2);
                 if (weights_xy >= 0.95 && weights_xy <= 1.05) {
