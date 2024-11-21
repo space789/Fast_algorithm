@@ -9,7 +9,7 @@
 #include <cstring>
 #include <memory>
 
-// #define DEBUG
+// #define DEBUG //
 
 // Function to read the .mtx file and build the CSR representation
 void readMtxToCSR(const std::string& filename, std::shared_ptr<std::vector<int>> row_ptr, std::shared_ptr<std::vector<int>> col_idx, std::shared_ptr<std::vector<int>> dirct_vertex, std::shared_ptr<std::vector<int>> dirct_edge) {

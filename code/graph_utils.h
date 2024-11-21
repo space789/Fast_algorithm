@@ -40,4 +40,4 @@ EdgeList APPROXISC(string filename, int k, int targetnode, int maxLength, double
 EdgeList FASTICM(string filename, int k, int targetnode, int maxLength, double alpha, int phi);
 EdgeList processEdgesWithScores(string filename, int k, int target, int maxLength, double epsilon);
 
-#endif // GRAPH_UTILS_H
+#endif // GRAPH_UTILS_H//
