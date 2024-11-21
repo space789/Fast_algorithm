@@ -166,23 +166,26 @@ public:
         };
         return {pathEdgesAll, pathLengthAll};
     }
-
+    
     std::pair<std::vector<std::pair<int, int>>, std::vector<double>> removeEdgeResistanceSum(Graph& g, int targetNode,
      const std::vector<std::vector<std::pair<int, int>>>& pathEdgesAll, const std::vector<int>& pathLengthAll, int rho) {
         std::vector<std::pair<int, int>> removeEdge;
         std::vector<double> removeEdgeResistance;
         std::vector<std::pair<int, int>> edgesToRemove;
-        int count = 0;
         for (const auto& pair : g.adjList) {
             int node1 = pair.first;
             for (int node2: pair.second) {
                 double weights_u = 0;
                 double weights_xy = 0;
                 for (size_t i = 0; i < pathEdgesAll.size(); i+=2) {
-                    for (const auto& pair : pathEdgesAll[i]){
-                        if ((pair.first == node1 || pair.first == node2 || pair.second == node1 || pair.second == node2)) {
-                            weights_u += 1.0 / (abs(pathLengthAll[i] + (pathLengthAll[i+1])));
-                            weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
+                    for (const auto& edge : pathEdgesAll[i]){
+                        if (pathEdgesAll[i].back().second == targetNode || pathEdgesAll[i].back().first == targetNode) {    
+                            if ((edge.first == node1 && edge.second == node2) || (edge.first == node1 && edge.second == node2)) {
+                                weights_u += (abs(pathLengthAll[i] * (pathLengthAll[i+1]))) / (pathLengthAll[i] + pathLengthAll[ i+1]) ;
+                                weights_xy += (abs(pathLengthAll[i] - pathLengthAll[i+1]));
+                            }
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -197,6 +200,169 @@ public:
         return {removeEdge, removeEdgeResistance};
     }
 };
+
+class CSR {
+private:
+    std::vector<int> row_ptr;  // Start indices of rows in col_idx
+    std::vector<int> col_idx;  // Column indices (target nodes for edges)
+    int num_nodes;             // Number of nodes in the graph
+    int num_edges;             // Number of edges in the graph
+
+public:
+    // Constructor
+    CSR() : num_nodes(0), num_edges(0) {}
+    void loadFromFile(const std::string& filename) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Unable to open file " << filename << std::endl;
+            return;
+        }
+        std::vector<std::pair<int, int>> edges;
+        int max_node = -1;
+        int u, v;
+        while (file >> u >> v) {
+            edges.emplace_back(u, v);
+            edges.emplace_back(v, u);
+            max_node = std::max(max_node, std::max(u, v));
+        }
+        file.close();
+        num_nodes = max_node;
+        num_edges = edges.size() / 2;
+        row_ptr.resize(num_nodes + 1, 0);
+        for (const auto& edge : edges) {
+            row_ptr[edge.first + 1]++;
+        }
+        for (int i = 1; i <= num_nodes; ++i) {
+            row_ptr[i] += row_ptr[i - 1];
+        }
+        col_idx.resize(edges.size());
+        std::vector<int> current_row_count(num_nodes, 0);
+        for (const auto& edge : edges) {
+            int row = edge.first;
+            int index = row_ptr[row] + current_row_count[row]++;
+            col_idx[index] = edge.second;
+        }
+    }
+    void addEdge(int u, int v) {
+        throw std::runtime_error("Dynamic edge addition not supported in CSR.");
+    }
+    std::vector<int> getNeighbors(int node) const {
+        if (node < 0 || node >= num_nodes) {
+            return {};
+        }
+        return std::vector<int>(col_idx.begin() + row_ptr[node], col_idx.begin() + row_ptr[node + 1]);
+    }
+    void printCSR() const {
+        std::cout << "row_ptr: ";
+        for (const auto& val : row_ptr) {
+            std::cout << val << " ";
+        }
+        std::cout << "\ncol_idx: ";
+        for (const auto& val : col_idx) {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+    }
+    int getNumNodes() const {
+        return num_nodes;
+    }
+    int getNumEdges() const {
+        return num_edges;
+    }
+    const std::vector<int>& getRowPtr() const {
+        return row_ptr;
+    }
+    const std::vector<int>& getColIdx() const {
+        return col_idx;
+    }
+
+    float randomWalk(int source, int target, int steps) const {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> dis(0.0, 1.0);
+        int current_node = source;
+        for (int current_step = 0; current_step < steps; ++current_step) {
+            int start = row_ptr[current_node];
+            int end = (current_node >= row_ptr.size() - 1) ? col_idx.size() : row_ptr[current_node + 1];
+            if (start == end) {
+                return 0.0f;
+            }
+            int next_node = col_idx[start + static_cast<int>((end - start) * dis(gen))];
+            current_node = next_node;
+            if (current_node == target) {
+                return 1.0f / current_step;
+            }
+        }
+        return 0.0f;
+    }
+
+    std::vector<float> calculateEdgeScore(int target, int rho, int steps) {
+        std::vector<float> edge_scores(col_idx.size(), 0.0f); 
+        int target_index = target - 1;
+        for (int i = 0; i < row_ptr.size() - 1; ++i) {
+            int start = row_ptr[i];
+            int end = (i == row_ptr.size() - 1) ? col_idx.size() : row_ptr[i + 1];
+            if (i == target_index) {
+                for (int j = start; j < end; ++j) {
+                    int source_2 = col_idx[j];
+                    float score_sum = 0;
+                    for (int count = 0; count < rho; ++count) {
+                        float v1_score = randomWalk(source_2, target_index, steps);
+                        score_sum += v1_score;
+                    }
+                    edge_scores[j] = score_sum / (float)rho;
+                }
+                return edge_scores;
+            }
+            for (int j = start; j < end; ++j) {
+                int source_2 = col_idx[j];
+                float score_sum = 0;
+                for (int count = 0; count < rho; ++count) {
+                    float v1_score = randomWalk(i, target_index, steps);
+                    if (source_2 != target_index) {
+                        float v2_score = randomWalk(source_2, target_index, steps);
+                        score_sum += (v1_score + v2_score);
+                    }
+                }
+                edge_scores[j] = score_sum / (float)rho;
+            }
+        }
+        return edge_scores;
+    }
+};
+
+// Function to read the graph, calculate edge scores, and return vector<Edge>
+EdgeList processEdgesWithScores(string filename, int k, int target, int maxLength, double epsilon) {
+    CSR g;
+    g.loadFromFile(filename);
+    int rho = static_cast<int>(log(g.getNumNodes()) / pow(epsilon, 2) / 200);
+    std::vector<float> edge_scores;
+    edge_scores = g.calculateEdgeScore(target, rho, maxLength);
+    std::vector<std::tuple<int, int, float>> edges_with_scores;
+    const auto& row_ptr = g.getRowPtr();
+    const auto& col_idx = g.getColIdx();
+    for (int i = 0; i < g.getNumEdges(); ++i) {
+        int source_vertex = -1;
+        for (int j = 0; j < g.getNumNodes(); ++j) {
+            if (i >= row_ptr[j] && i < row_ptr[j + 1]) {
+                source_vertex = j;
+                break;
+            }
+        }
+        int target_vertex = col_idx[i];
+        edges_with_scores.emplace_back(source_vertex, target_vertex, edge_scores[i]);
+    }
+    std::sort(edges_with_scores.begin(), edges_with_scores.end(), [](const std::tuple<int, int, float>& a, const std::tuple<int, int, float>& b) {
+        return std::get<2>(a) > std::get<2>(b);
+    });
+    EdgeList P;
+    for (int i = 0; i < k && i < edges_with_scores.size(); ++i) {
+        int source_vertex = std::get<0>(edges_with_scores[i]);
+        int target_vertex = std::get<1>(edges_with_scores[i]);
+        P.push_back({source_vertex, target_vertex});
+    }
+    return P;
+}
 
 SparseMatrix<double> createLaplacianMatrix(int num_nodes, const EdgeList& edges) {
     SparseMatrix<double> L(num_nodes, num_nodes);
@@ -214,6 +380,7 @@ SparseMatrix<double> createLaplacianMatrix(int num_nodes, const EdgeList& edges)
     }
     return L;
 }
+
 
 MatrixXd computePseudoinverse(const SparseMatrix<double>& L) {
     MatrixXd L_dense = MatrixXd(L);
@@ -485,7 +652,7 @@ int max_random_walk_length(string filename, int target, double gamma) {
         std::cerr << "Error: Spectral radius is less than or equal to 1, invalid for max_length calculation!" << std::endl;
         return -1;
     }
-    int max_length = static_cast<int>(0.1 * (std::log(m * gamma / std::sqrt(n - 1)) * d_norm) / std::log(spectral_radius));
+    int max_length = static_cast<int>(0.05 * (std::log(m * gamma / std::sqrt(n - 1)) * d_norm) / std::log(spectral_radius));
     return max_length;
 }
 
@@ -501,12 +668,12 @@ EdgeList APPROXISC(string filename, int numberOfEdge, int targetNode, int maxLen
         auto allResistance = g.removeEdgeResistanceSum(g, targetNode, pathEdgesAll, pathLengthAll, rho);
         const auto& pathEdges = allResistance.first;
         const auto& pathEdgesResistance = allResistance.second;
-        double maxResistance = -std::numeric_limits<double>::infinity();
+        double maxResistance = std::numeric_limits<double>::infinity();
         std::pair<int, int> getMaxEdge;
         for (size_t i = 0; i < pathEdges.size(); ++i) {
             const auto& edge = pathEdges[i];
             double resistance = pathEdgesResistance[i] ;
-            if (resistance > maxResistance) {
+            if (resistance < maxResistance) {
                 maxResistance = resistance;
                 getMaxEdge = edge;
             }
@@ -554,9 +721,9 @@ EdgeList FASTICM(std::string filename, int numberOfEdge, int targetNode,
         const auto& pathEdges = allResistance.first;
         const auto& pathEdgesResistance = allResistance.second;
         std::pair<int, int> maxEdge;
-        double maxResistance = -std::numeric_limits<double>::infinity();
+        double maxResistance = std::numeric_limits<double>::infinity();
         for (size_t i = 0; i < pathEdges.size(); ++i) {
-            if (pathEdgesResistance[i] > maxResistance) {
+            if (pathEdgesResistance[i] < maxResistance) {
                 maxResistance = pathEdgesResistance[i];
                 maxEdge = pathEdges[i];
             }

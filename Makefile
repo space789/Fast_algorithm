@@ -7,7 +7,7 @@ CXXFLAGS_17 = -std=c++17 -O3
 all:	main	optimum	exactsm	approxisc	random_walk	approxisc
 
 main:	code/main.cpp code/graph_utils.cpp
-	$(CXX)	$(CXXFLAGS_17)	$(DEPEND)	code/main.cpp	code/graph_utils.cpp	-o	output/main		
+	$(CXX)	$(CXXFLAGS_17)	$(DEPEND)	-pthread	code/main.cpp	code/graph_utils.cpp	-o	output/main		
 optimum:	code/optimum.cpp
 	$(CXX)	$(CXXFLAGS_14)	$(DEPEND)	code/optimum.cpp	-o	output/optimum	
 exactsm:	code/exactsm.cpp
@@ -17,4 +17,4 @@ approxisc:	code/approxisc.cpp
 fasticm:	code/fasticm.cpp
 	$(CXX)	$(CXXFLAGS_17)	$(DEPEND)	code/fasticm.cpp	-o	output/fasticm
 random_walk:	code/random_walk.cpp
-	$(CXX)	$(CXXFLAGS_14)	$(DEPEND) code/random_walk.cpp	-o	output/random_walk
+	$(CXX)	$(CXXFLAGS_14)	$(DEPEND)	-pthread	code/random_walk.cpp	-o	output/random_walk

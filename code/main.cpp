@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include <cstdlib> // For std::stoi
+#include <cstdlib>
 #include <stdexcept>
 #include <sstream>
 #include <string>
@@ -166,16 +166,16 @@ int main(int argc, char* argv[]) {
     if (runAPPROXISC) {
         cout << "APPROXISC" << endl;
         double gamma = 0.95;
-        double epsilon = 0.05;
+        double epsilon = 0.005;
         auto start_approxisc = high_resolution_clock::now();
         for (int target: targetnodes) {
             int max_length = max_random_walk_length(filename, target, gamma);
-            vector<Edge> P_approxisc = APPROXISC(filename, k, target, max_length, epsilon);
+            vector<Edge> P_approxisc = processEdgesWithScores(filename, k, target, max_length, epsilon);
             all_P.push_back(make_pair(target, P_approxisc));
         }
         auto stop_approxisc = high_resolution_clock::now();
-        auto duration_approxisc = duration_cast<milliseconds>(stop_approxisc - start_approxisc);
-        cout << "APPROXISC running time: " << duration_approxisc.count() / 1000.0 << " seconds" << endl;
+        auto duration_fasticm = duration_cast<milliseconds>(stop_approxisc - start_approxisc);
+        cout << "APPROXISC running time: " << duration_fasticm.count() / 1000.0 << " seconds" << endl;
         printTargetNodesAndEdges(filename, "APPROXISC", targetnodes, all_P);
         all_P.clear();
     }
@@ -198,6 +198,5 @@ int main(int argc, char* argv[]) {
         printTargetNodesAndEdges(filename, "FASTICM", targetnodes, all_P);
         all_P.clear();
     }
-
     return 0;
 }
