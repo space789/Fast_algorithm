@@ -17,6 +17,7 @@
 #include <queue>
 #include <Eigen/SVD>
 #include <cstdio>
+#include <memory>
 
 using namespace std;
 using namespace Eigen;
